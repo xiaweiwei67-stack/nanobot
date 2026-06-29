@@ -1810,16 +1810,27 @@ def provider_logout(
 @_register_login("openai_codex")
 def _login_openai_codex() -> None:
     try:
-        from oauth_cli_kit import get_token, login_oauth_interactive
+        from nanobot.config.loader import load_config, resolve_config_env_vars
+        from nanobot.providers.openai_codex_oauth import (
+            get_codex_oauth_token,
+            login_openai_codex_interactive,
+        )
 
+        proxy = None
+        try:
+            proxy = resolve_config_env_vars(load_config()).providers.openai_codex.proxy or None
+        except ValueError as e:
+            console.print(f"[red]{e}[/red]")
+            raise typer.Exit(1) from e
         token = None
         with suppress(Exception):
-            token = get_token()
+            token = get_codex_oauth_token(proxy=proxy)
         if not (token and token.access):
             console.print("[cyan]Starting interactive OAuth login...[/cyan]\n")
-            token = login_oauth_interactive(
+            token = login_openai_codex_interactive(
                 print_fn=lambda s: console.print(s),
                 prompt_fn=lambda s: typer.prompt(s),
+                proxy=proxy,
             )
         if not (token and token.access):
             console.print("[red]✗ Authentication failed[/red]")
